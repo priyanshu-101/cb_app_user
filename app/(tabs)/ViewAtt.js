@@ -15,32 +15,34 @@ const App = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [employeeDetails, setEmployeeDetails] = useState([]);
   const [leaveApplication, setLeaveApplication] = useState([]);
+  const [presentDates, setPresentDates] = useState([]);
+  const [leaveDates, setLeaveDates] = useState([]);
+  const [absentDates, setAbsentDates] = useState([]);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const route = useRoute();
-  const { employeeId, employeeName } = route.params;
+  const { employeeUsername } = route.params;
   const navigation = useNavigation();
 
   useEffect(() => {
-    const fetchEmployeeDetails = async (name) => {
+    const fetchEmployeeDetails = async (username) => {
       try {
-        const response = await axios.get(`http://localhost:3000/ViewAtt/${name}`);
-        console.log('Fetched data:', response.data); // Log data to check structure
+        const response = await axios.get(`http://localhost:3000/ViewAtt/${username}`);
+        console.log('Fetched data:', response.data);
         setEmployeeDetails(response.data || []);
       } catch (error) {
         console.error('Error fetching employee details:', error);
       }
     };
 
-    if (employeeName) {
-      fetchEmployeeDetails(employeeName);
+    if (employeeUsername) {
+      fetchEmployeeDetails(employeeUsername);
     }
-  }, [employeeName]);
+  }, [employeeUsername]);
 
-  const handleCheckboxChange = (index) => {
-    const newDays = [...days];
-    newDays[index].value = !newDays[index].value;
-    setDays(newDays);
-  };
+  useEffect(() => {
+    const absentDays = Array.from({ length: new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate() }, (_, i) => i + 1).filter(day => !presentDates.includes(day) && !leaveDates.includes(day));
+    setAbsentDates(absentDays);
+  }, [presentDates, leaveDates, currentDate]);
 
   const changeMonth = (delta) => {
     setCurrentDate(prevDate => {
@@ -48,6 +50,7 @@ const App = () => {
       newDate.setMonth(newDate.getMonth() + delta);
       return newDate;
     });
+    handleStatusChange(selectedStatus); // Refresh data when month changes
   };
 
   const changeYear = (delta) => {
@@ -56,6 +59,33 @@ const App = () => {
       newDate.setFullYear(newDate.getFullYear() + delta);
       return newDate;
     });
+    handleStatusChange(selectedStatus); // Refresh data when year changes
+  };
+
+  const handleStatusChange = async (status) => {
+    setSelectedStatus(status);
+
+    try {
+      const response = await axios.get(`http://localhost:3000/ViewAtt/${employeeUsername}`, {
+        params: {
+          employeeUsername: employeeUsername,
+          status: status,
+          month: currentDate.getMonth() + 1, // JS months are 0-indexed
+          year: currentDate.getFullYear()
+        }
+      });
+      console.log('Fetched data:', response.data);
+
+      if (status === 'On Leave') {
+        setLeaveApplication(response.data || []);
+        setLeaveDates(response.data.map(item => new Date(item.attendance_date).getDate()));
+      } else if (status === 'Present') {
+        setEmployeeDetails(response.data || []);
+        setPresentDates(response.data.map(item => new Date(item.attendance_date).getDate()));
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
   };
 
   const renderDays = () => {
@@ -70,9 +100,17 @@ const App = () => {
         if (week === 0 && day < firstDay) {
           days.push(<View key={day} style={styles.emptyDay} />);
         } else if (currentDay <= daysInMonth) {
+          const isPresent = presentDates.includes(currentDay);
+          const isOnLeave = leaveDates.includes(currentDay);
+          const isAbsent = !isPresent && !isOnLeave;
           days.push(
             <View key={day} style={styles.day}>
-              <Text style={[styles.dayText, (currentDay % 7 === 0 || (currentDay + 1) % 7 === 0) ? styles.holidayText : {}]}>
+              <Text style={[
+                styles.dayText,
+                isPresent ? styles.presentDay :
+                isOnLeave ? styles.leaveDay :
+                isAbsent ? styles.absentDay : styles.dayText
+              ]}>
                 {currentDay}
               </Text>
             </View>
@@ -90,26 +128,6 @@ const App = () => {
     }
     return weeks;
   };
-  const handleStatusChange = async (status) => {
-    setSelectedStatus(status);
-  
-    try {
-      const response = await axios.get(`http://localhost:3000/ViewAtt/${employeeName}`, {
-        params: {
-          employeeName: employeeName,
-          status: status
-        }
-      });
-      console.log('Fetched data:', response.data); // Log data to check structure
-      if (status === 'On Leave') {
-        setLeaveApplication(response.data || []);
-      } else if (status === 'Present') {
-        setEmployeeDetails(response.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  };
 
   const renderEmployeeItem = ({ item }) => (
     <View style={styles.employeeDetails}>
@@ -118,7 +136,7 @@ const App = () => {
         style={styles.employeePhoto}
       />
       <View style={styles.employeeInfo}>
-        <Text style={styles.employeeName}>{item.employee_name || 'N/A'}</Text>
+        <Text style={styles.employeeName}>{item.employee_username || 'N/A'}</Text>
         <Text style={styles.employeeLocation}>{item.city || 'N/A'}</Text>
         <Text style={styles.attendanceDate}>Date: {item.attendance_date || 'N/A'}</Text>
       </View>
@@ -141,12 +159,12 @@ const App = () => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile', { employeeId })}>
-          <Icon name="arrow-back" size={24} color="black" />
+        <TouchableOpacity onPress={() => navigation.navigate('Profile', { employeeUsername: route.params?.employeeUsername })}>
+          <Icon name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerText}>{employeeDetails.length > 0 ? employeeDetails[0].employee_name || 'Loading...' : 'Loading...'}</Text>
+        <Text style={styles.headerText}>{employeeDetails.length > 0 ? employeeDetails[0].employee_username || 'Loading...' : 'Loading...'}</Text>
         <TouchableOpacity onPress={() => setShowDropdown(!showDropdown)}>
-          <Icon name="menu" size={24} color="black" />
+          <Icon name="menu" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
@@ -161,19 +179,19 @@ const App = () => {
       <View style={styles.calendar}>
         <View style={styles.calendarHeader}>
           <TouchableOpacity onPress={() => changeYear(-1)}>
-            <Icon name="arrow-back-ios" size={24} color="black" />
+            <Icon name="arrow-back-ios" size={24} color="#007bff" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => changeMonth(-1)}>
-            <Icon name="arrow-left" size={24} color="black" />
+            <Icon name="arrow-left" size={24} color="#007bff" />
           </TouchableOpacity>
           <Text style={styles.month}>
             {currentDate.toLocaleString('default', { month: 'long' })} {currentDate.getFullYear()}
           </Text>
           <TouchableOpacity onPress={() => changeMonth(1)}>
-            <Icon name="arrow-right" size={24} color="black" />
+            <Icon name="arrow-right" size={24} color="#007bff" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => changeYear(1)}>
-            <Icon name="arrow-forward-ios" size={24} color="black" />
+            <Icon name="arrow-forward-ios" size={24} color="#007bff" />
           </TouchableOpacity>
         </View>
         <View style={styles.weekDays}>
@@ -188,201 +206,183 @@ const App = () => {
         <TouchableOpacity style={[styles.option, selectedStatus === 'Present' && styles.selectedButton]} onPress={() => handleStatusChange('Present')}>
           <Text style={styles.optionText}>Present</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.option, selectedStatus === 'Absent' && styles.selectedButton]} onPress={() => handleStatusChange('Absent')}>
-          <Text style={styles.optionText}>Absent</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={[styles.option, selectedStatus === 'On Leave' && styles.selectedButton]} onPress={() => handleStatusChange('On Leave')}>
           <Text style={styles.optionText}>On Leave</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.option, selectedStatus === 'Working Days' && styles.selectedButton]} onPress={() => handleStatusChange('Working Days')}>
-          <Text style={styles.optionText}>Working Days</Text>
-        </TouchableOpacity>
       </View>
 
-      {selectedStatus === 'Present' && (
-        <FlatList
-          data={employeeDetails}
-          renderItem={renderEmployeeItem}
-          keyExtractor={(item) => item.employee_id ? item.employee_id.toString() : Math.random().toString()}
-          style={styles.employeeList}
-        />
-      )}
-
-      {selectedStatus === 'On Leave' && (
-        <View style={styles.leaveDetailsContainer}>
-          <FlatList
-            data={leaveApplication}
-            renderItem={renderLeaveItem}
-            keyExtractor={(item) => item.leave_id ? item.leave_id.toString() : Math.random().toString()}
-            style={styles.leaveList}
-          />
-        </View>
-      )}
+      <FlatList
+        data={selectedStatus === 'Present' ? employeeDetails : leaveApplication}
+        keyExtractor={(item, index) => index.toString()}
+        renderItem={selectedStatus === 'Present' ? renderEmployeeItem : renderLeaveItem}
+      />
     </ScrollView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: '#68689E',
-    padding: 20,
-    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    padding: 20
   },
   header: {
-    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 20
   },
   headerText: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#333'
   },
   dropdown: {
+    backgroundColor: '#fff',
+    elevation: 2,
+    borderRadius: 4,
     position: 'absolute',
-    top: 60,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    zIndex: 1,
+    right: 0,
+    top: 50,
+    width: 150
   },
   dropdownItem: {
-    padding: 15,
+    padding: 10,
+    borderBottomColor: '#ccc',
+    borderBottomWidth: 1
   },
   dropdownText: {
     fontSize: 16,
-    color: 'black',
+    color: '#333'
   },
   calendar: {
-    width: '100%',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    elevation: 3,
+    padding: 20,
+    marginBottom: 20
   },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 10
   },
   month: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#007bff'
   },
   weekDays: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 10
   },
   weekDayText: {
     flex: 1,
     textAlign: 'center',
     fontWeight: 'bold',
+    color: '#333'
   },
   week: {
     flexDirection: 'row',
+    justifyContent: 'space-between'
   },
   day: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    padding: 10
   },
   dayText: {
     fontSize: 16,
+    color: '#333'
   },
-  holidayText: {
+  presentDay: {
+    color: 'green',
+    fontWeight: 'bold'
+  },
+  leaveDay: {
+    color: 'orange',
+    fontWeight: 'bold'
+  },
+  absentDay: {
     color: 'red',
+    fontWeight: 'bold'
   },
   emptyDay: {
     flex: 1,
+    padding: 10
   },
   optionsContainer: {
     flexDirection: 'row',
-    marginBottom: 20,
+    justifyContent: 'space-around',
+    marginBottom: 20
   },
   option: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 5,
     padding: 10,
-    margin: 5,
-    width: 80,
-    alignItems: 'center',
+    backgroundColor: '#007bff',
+    borderRadius: 8
   },
   selectedButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#0056b3'
   },
   optionText: {
-    color: '#000',
-  },
-  employeeList: {
-    marginTop: 20,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold'
   },
   employeeDetails: {
     flexDirection: 'row',
-    marginBottom: 20,
     alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    elevation: 2
   },
   employeePhoto: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginRight: 10,
+    marginRight: 10
   },
   employeeInfo: {
-    flex: 1,
+    flex: 1
   },
   employeeName: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#333'
   },
   employeeLocation: {
     fontSize: 14,
-    color: 'gray',
+    color: '#666'
   },
   attendanceDate: {
     fontSize: 14,
-  },
-  leaveDetailsContainer: {
-    marginTop: 20,
-    width: '100%',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    color: '#666'
   },
   leaveItem: {
-    marginBottom: 15,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    elevation: 2,
+    marginBottom: 10
   },
   leaveReason: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#333'
   },
   leaveDate: {
     fontSize: 14,
-    color: 'gray',
+    color: '#666'
   },
   attachmentImage: {
     width: 100,
     height: 100,
-    marginTop: 10,
-  },
-  leaveList: {
-    marginTop: 20,
-  },
+    marginTop: 10
+  }
 });
 
 export default App;
-

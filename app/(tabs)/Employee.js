@@ -9,12 +9,12 @@ const EmployeesScreen = () => {
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   const route = useRoute();
-  const { employeeId } = route.params;
+  const { employeeUsername } = route.params;  // Use employeeUsername
 
   useEffect(() => {
     const fetchEmployeeData = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/Employee/${employeeId}`);
+        const response = await axios.get(`http://localhost:3000/Employee/${employeeUsername}`); // Use employeeUsername in the API call
         setEmployeeData(response.data);
         setLoading(false);
       } catch (error) {
@@ -24,10 +24,10 @@ const EmployeesScreen = () => {
     };
 
     fetchEmployeeData();
-  }, [employeeId]);
+  }, [employeeUsername]); // Dependency on employeeUsername
 
   const handleBackPress = () => {
-    navigation.navigate('Profile', { employeeId });
+    navigation.navigate('Profile', { employeeUsername }); // Pass employeeUsername
   };
 
   if (loading) {
@@ -88,6 +88,7 @@ const EmployeesScreen = () => {
     </ScrollView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -168,7 +169,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-
-
 
 export default EmployeesScreen;

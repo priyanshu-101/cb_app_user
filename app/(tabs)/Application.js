@@ -7,10 +7,10 @@ import axios from 'axios';
 const App = () => {
   const [applicationText, setApplicationText] = useState('');
   const [attachments, setAttachments] = useState([]);
-  const [sentApplications, setSentApplications] = useState([]);
   const [name, setName] = useState('');
   const route = useRoute();
-  const { employeeId } = route.params;
+  const { employeeUsername } = route.params;
+  const navigation = useNavigation();
 
   const handleAttachment = () => {
     if (Platform.OS === 'web') {
@@ -43,17 +43,18 @@ const App = () => {
     try {
       const formData = new FormData();
       formData.append('reason', applicationText);
-      formData.append('employee_name', name);
+      formData.append('employee_username', employeeUsername); // Use employee_username as per backend
+
       if (attachments.length > 0) {
         const file = attachments[0];
         formData.append('attachment', {
           uri: file.uri,
-          type: 'application/pdf',
+          type: 'application/pdf', // Ensure this matches the expected MIME type on your backend
           name: file.name
         });
       }
 
-      const response = await axios.post(`http://localhost:3000/Application/${employeeId}`, formData, {
+      const response = await axios.post(`http://localhost:3000/Application/${employeeUsername}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -82,12 +83,10 @@ const App = () => {
     }
   };
 
-  const navigation = useNavigation();
-
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile', { employeeId })}>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile', { employeeUsername })}>
           <Icon name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
         <Text style={styles.headerText}>Leave Application</Text>
@@ -130,7 +129,8 @@ const App = () => {
         </View>
       </View>
 
-      {sentApplications.length > 0 && (
+      {/* Add this section if you have sent applications data */}
+      {/* {sentApplications.length > 0 && (
         <View style={styles.sentApplications}>
           <Text style={styles.sentApplicationsTitle}>Sent Applications</Text>
           <View style={styles.columnsContainer}>
@@ -155,7 +155,7 @@ const App = () => {
             ))}
           </View>
         </View>
-      )}
+      )} */}
     </ScrollView>
   );
 };

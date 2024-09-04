@@ -11,22 +11,22 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     Alert.alert('Debug', 'Login button pressed!'); // Initial test alert
-
+  
     try {
       const response = await axios.post('http://localhost:3000/Login', {
         email,
         password,
       });
-
+  
       console.log('API Response:', response.data); // Log the API response
-
+  
       if (response.data.success) {
-        const { employee_id, designation } = response.data.employee;
+        const { employee_username, designation } = response.data.employee;
         if (designation === 'Admin') {
           navigation.navigate('CBbuilder');
         } else {
           navigation.navigate('Profile', {
-            employeeId: employee_id, // Navigate with employeeId
+            employeeUsername: employee_username, // Navigate with employee_username
           });
         }
       } else {
@@ -37,6 +37,7 @@ const LoginScreen = () => {
       Alert.alert('Login Error', 'Unable to log in. Please check your network connection and try again.');
     }
   };
+  
 
   return (
     <View style={styles.container}>

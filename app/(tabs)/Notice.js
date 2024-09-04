@@ -10,21 +10,21 @@ const NoticesScreen = () => {
   const [notices, setNotices] = useState([]);
   const [visible, setVisible] = useState(null);
   const [confirmedNotices, setConfirmedNotices] = useState(new Set());
-  const { employeeId } = route.params;
+  const { employeeUsername } = route.params; // Update to use employeeUsername
 
   useEffect(() => {
     // Fetch notices from the backend API
-    axios.get(`http://localhost:3000/Notice/${employeeId}`)
+    axios.get(`http://localhost:3000/Notice/${employeeUsername}`)
       .then(response => {
         setNotices(response.data);
       })
       .catch(error => {
         console.error('Error fetching notices:', error);
       });
-  }, [employeeId]);
+  }, [employeeUsername]);
 
   const handleBackPress = () => {
-    navigation.navigate('Profile', { employeeId });
+    navigation.navigate('Profile', { employeeUsername });
   };
 
   const handleThreeDotsPress = (id) => {
@@ -36,7 +36,8 @@ const NoticesScreen = () => {
       Alert.alert('Notice Already Confirmed', 'You have already confirmed this notice.');
     } else {
       // Update the notice as confirmed in the backend
-      axios.post(`http://localhost:3000/Notice/${id}`, { employeeId })
+      axios.post(`http://localhost:3000/Notice/${employeeUsername}`, { notice_id: id })
+
         .then(() => {
           Alert.alert('Confirmation', 'Notice confirmed successfully!');
           setConfirmedNotices(prev => new Set(prev).add(id));

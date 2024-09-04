@@ -11,11 +11,11 @@ const AttendancePage = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [customCityVisible, setCustomCityVisible] = useState(false);
   const [customCity, setCustomCity] = useState('');
-  const [name, setName] = useState(''); // Employee name state
+  const [username, setUsername] = useState(''); // Updated to store employee username
   const [sites, setSites] = useState([]);
   const videoRef = useRef(null);
   const route = useRoute();
-  const { employeeId } = route.params;
+  const { employeeUsername } = route.params; // Use employeeUsername
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -32,21 +32,21 @@ const AttendancePage = () => {
 
   useEffect(() => {
     // Fetch sites data from the server
-    axios.get(`http://localhost:3000/Camera/${employeeId}`)
+    axios.get(`http://localhost:3000/Camera/${employeeUsername}`) // Use employeeUsername
       .then(response => {
         setSites(response.data);
       })
       .catch(error => console.error('Error fetching sites:', error));
-  }, []);
+  }, [employeeUsername]); // Include employeeUsername as dependency
 
   useEffect(() => {
     // Fetch employee data from the server
-    axios.get(`http://localhost:3000/employee/${employeeId}`)
+    axios.get(`http://localhost:3000/employee/${employeeUsername}`) // Use employeeUsername
       .then(response => {
-        setName(response.data.employee_name);
+        setUsername(response.data.employee_username); // Updated to fetch employee_username
       })
-      .catch(error => console.error('Error fetching employee name:', error));
-  }, [employeeId]);
+      .catch(error => console.error('Error fetching employee username:', error));
+  }, [employeeUsername]); // Include employeeUsername as dependency
 
   const handleMarkAttendance = () => {
     setShowDropdown(true);
@@ -106,14 +106,14 @@ const AttendancePage = () => {
   const storeAttendanceData = async (imageData) => {
     try {
       const attendanceData = {
-        employee_name: name,
+        employee_username: username, // Store the employee username
         employee_photo: imageData,
         attendance_date: new Date().toISOString().split('T')[0],
         attendance_time: new Date().toTimeString().split(' ')[0],
         city: city || customCity,
       };
 
-      await axios.post(`http://localhost:3000/Camera/${employeeId}`, attendanceData);
+      await axios.post(`http://localhost:3000/Camera/${employeeUsername}`, attendanceData); // Use employeeUsername
       alert('Attendance marked successfully!');
     } catch (error) {
       console.error('Error storing attendance data:', error);
@@ -128,19 +128,22 @@ const AttendancePage = () => {
   }, [photoUri]);
 
   const handleBack = () => {
-    navigation.navigate('Profile', { employeeId });
+    navigation.navigate('Profile', { employeeUsername }); // Pass employeeUsername
   };
 
   return (
     <View style={styles.container}>
       {!cameraActive && !photoUri && (
         <>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Text style={styles.backButtonText}>← Back to Profile</Text>
+          </TouchableOpacity>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
-              placeholder="Enter your name"
-              value={name} // Auto-fill name
-              onChangeText={setName}
+              placeholder="Enter your username"
+              value={username} // Auto-fill username
+              onChangeText={setUsername}
               editable={false} // Make it read-only
             />
           </View>
@@ -207,7 +210,7 @@ const AttendancePage = () => {
           <Image source={{ uri: photoUri }} style={styles.photo} />
           <Text style={styles.dateTime}>Date and Time: {dateTime}</Text>
           {city && <Text style={styles.city}>Site: {city}</Text>}
-          <Text style={styles.name}>Name: {name}</Text>
+          <Text style={styles.username}>Username: {username}</Text> {/* Updated to display username */}
         </View>
       )}
     </View>
@@ -220,6 +223,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    padding: 10,
+    backgroundColor: '#007BFF',
+    borderRadius: 5,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
   },
   inputContainer: {
     marginBottom: 20,
@@ -269,59 +284,34 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
-  photo: {
-    width: 300,
-    height: 300,
-    borderRadius: 10,
-  },
-  dateTime: {
-    marginTop: 10,
-    fontSize: 16,
-  },
-  city: {
-    marginTop: 10,
-    fontSize: 16,
-  },
-  name: {
-    marginTop: 10,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  cityText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   video: {
-    width: 320,
-    height: 240,
+    width: 300,
+    height: 400,
     borderRadius: 10,
     backgroundColor: '#000',
   },
   dropdownContainer: {
-    position: 'absolute',
-    top: 100,
     width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  dropdown: {
     maxHeight: 200,
   },
-  dropdownItem: {
+  dropdown: {
+    backgroundColor: '#fff',
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 5,
+    marginTop: 10,
     padding: 10,
-    borderBottomColor: '#ccc',
+  },
+  dropdownItem: {
+    paddingVertical: 10,
     borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
   },
   dropdownItemText: {
     fontSize: 16,
   },
   customCityContainer: {
-    padding: 10,
+    marginTop: 20,
   },
   customCityInput: {
     height: 40,
@@ -331,15 +321,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: '#fff',
   },
-  backButton: {
-    marginBottom: 20,
-    padding: 10,
-    backgroundColor: '#007BFF',
-    borderRadius: 5,
-  },
-  backButtonText: {
-    color: '#fff',
+  dateTime: {
+    marginTop: 20,
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  city: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  username: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  photo: {
+    width: 300,
+    height: 400,
+    borderRadius: 10,
   },
 });
 

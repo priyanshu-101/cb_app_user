@@ -4,10 +4,10 @@ import { Avatar } from 'react-native-elements';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 
-// Function to fetch employee data by ID
-const fetchEmployeeData = async (employeeId) => {
+// Function to fetch employee data by username
+const fetchEmployeeData = async (employeeUsername) => {
   try {
-    const response = await axios.get(`http://localhost:3000/Profile/${employeeId}`);
+    const response = await axios.get(`http://localhost:3000/Profile/username/${employeeUsername}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching employee data:', error);
@@ -18,28 +18,27 @@ const fetchEmployeeData = async (employeeId) => {
 const Profile = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { employeeId } = route.params;  // Get employeeId from route params
+  const { employeeUsername: initialUsername } = route.params;  // Get employeeUsername from route params
 
-  const [employeeName, setEmployeeName] = useState('');
+  const [employeeUsername, setEmployeeUsername] = useState(initialUsername);
 
   useEffect(() => {
     const getEmployeeData = async () => {
-      const employeeData = await fetchEmployeeData(employeeId);
+      const employeeData = await fetchEmployeeData(initialUsername);
       if (employeeData) {
-        setEmployeeName(employeeData.employee_name.toUpperCase());  // Set employee name from fetched data
+        setEmployeeUsername(employeeData.employee_username);  // Set employee username from fetched data
       }
     };
 
     getEmployeeData();
-  }, [employeeId]);
+  }, [initialUsername]);
 
   const handleLogoutNavigation = () => {
     navigation.navigate('Login');
   };
 
   const navigateToPage = (pageName, additionalParams = {}) => {
-    // Pass employeeId unless specifically excluded
-    const params = pageName === 'ViewAtt' ? additionalParams : { employeeId, ...additionalParams };
+    const params = { employeeUsername, ...additionalParams };
     navigation.navigate(pageName, params);
   };
 
@@ -53,7 +52,7 @@ const Profile = () => {
             source={{ uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?cs=srgb&dl=pexels-simon-robben-55958-614810.jpg&fm=jpg' }}
           />
           <View style={styles.headerTextContainer}>
-            <Text style={styles.employeeName}>{employeeName}</Text>  {/* Display employee name */}
+            <Text style={styles.employeeUsername}>{employeeUsername.toUpperCase()}</Text>  {/* Display employee username */}
           </View>
         </View>
         <View style={styles.buttonsContainer}>
@@ -69,7 +68,7 @@ const Profile = () => {
       <View style={styles.menuContainer}>
         <View style={styles.menuItem}>
           <Image style={styles.menuImage} source={{ uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?cs=srgb&dl=pexels-simon-robben-55958-614810.jpg&fm=jpg' }} />
-          <TouchableOpacity style={styles.menuTouchable} onPress={() => navigateToPage('Employee', { employeeId })}>
+          <TouchableOpacity style={styles.menuTouchable} onPress={() => navigateToPage('Employee')}>
             <View style={styles.menuTextContainer}>
               <Text style={styles.menuText}>Profile</Text>
               <Text style={styles.menuSubText}>Display your profile details</Text>
@@ -91,7 +90,7 @@ const Profile = () => {
 
         <View style={styles.menuItem}>
           <Image style={styles.menuImage} source={{ uri: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?cs=srgb&dl=pexels-simon-robben-55958-614810.jpg&fm=jpg' }} />
-          <TouchableOpacity style={styles.menuTouchable} onPress={() => navigateToPage('ViewAtt', { employeeName },{employeeId})}>
+          <TouchableOpacity style={styles.menuTouchable} onPress={() => navigateToPage('ViewAtt')}>
             <View style={styles.menuTextContainer}>
               <Text style={styles.menuText}>View Attendance</Text>
               <Text style={styles.menuSubText}>Check your monthly attendance in detail</Text>
@@ -147,7 +146,6 @@ const Profile = () => {
     </ScrollView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -180,7 +178,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
-  employeeName: {
+  employeeUsername: {
     fontSize: 22,
     color: '#000',
     fontWeight: 'bold',
@@ -215,25 +213,23 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#000',
+    fontWeight: 'bold',
   },
   menuSubText: {
     fontSize: 14,
-    color: '#888',
+    color: '#999',
   },
   triangle: {
     width: 0,
     height: 0,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-    borderLeftWidth: 10,
-    borderRightWidth: 10,
-    borderBottomWidth: 20,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: '#007BFF',
-    transform: [{ rotate: '90deg' }],
+    borderTopColor: '#999',
+    marginLeft: 10,
   },
 });
 
